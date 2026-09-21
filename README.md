@@ -13,7 +13,7 @@ Utilities for polling a Rainforest Eagle 3 energy monitor's local API, logging p
    [rainforest]
    CLOUD_ID = <cloud id>
    INSTALL_CODE = <install code>
-   HARDWARE_ADDRESS = <meter hardware address>
+   HARDWARE_ADDRESS = <Eagle 3 hardware address>
    ```
 
 ## Programs
