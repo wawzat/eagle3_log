@@ -14,6 +14,9 @@ df.columns = df.columns.str.strip()
 df['Timestamp'] = pd.to_datetime(df['Timestamp'])
 df = df.sort_values('Timestamp')
 
+# Filter out any faulty 0.0 odometer rows before calculating math boundaries
+df = df[df['SummationDelivered_kWh'] > 0.0]
+
 # 2. Extract specific grouping targets
 df['DateHourKey'] = df['Timestamp'].dt.strftime('%Y-%m-%d %H:00')
 df['HourOfDay'] = df['Timestamp'].dt.hour
