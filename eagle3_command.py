@@ -25,12 +25,10 @@ def build_xml_payload(command, hardware_address):
         ET.SubElement(device_details, "HardwareAddress").text = hardware_address
 
     if command == "device_query":
+        # Using the <All>Y</All> shortcut block documented on page 13 
+        # to fetch all operational variables at once dynamically
         components = ET.SubElement(command_node, "Components")
-        component = ET.SubElement(components, "Component")
-        ET.SubElement(component, "Name").text = "Main"
-        variables = ET.SubElement(component, "Variables")
-        variable = ET.SubElement(variables, "Variable")
-        ET.SubElement(variable, "Name").text = "zigbee:InstantaneousDemand"
+        ET.SubElement(components, "All").text = "Y"
 
     return ET.tostring(command_node, encoding="unicode")
 
@@ -45,23 +43,20 @@ CLOUD_ID = config.get('rainforest', 'CLOUD_ID')
 INSTALL_CODE = config.get('rainforest', 'INSTALL_CODE')
 HARDWARE_ADDRESS = config.get('rainforest', 'HARDWARE_ADDRESS')
 
-# 1. Silence SSL Warning notifications
+# Silence SSL Warning notifications
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-
-# 3. Connection
 url = "https://192.168.1.49/cgi-bin/post_manager"
 
 headers = {
     "Content-Type": "application/xml"
 }
 
-print("Fetching and parsing metric matrices from Eagle 3...")
+print(f"Executing local API command '{args.command}' on Eagle 3...")
 
 try:
     xml_payload = build_xml_payload(args.command, HARDWARE_ADDRESS)
 
-    # 4. Fire the local API connection
     response = requests.post(
         url, 
         data=xml_payload, 
@@ -74,48 +69,73 @@ try:
         print(f"HTTP Error {response.status_code}: Communication link failed.")
         exit(1)
 
-    # 5. Parse the raw string tree
     root = ET.fromstring(response.text)
     
-    # Check for hardware error status payload
     if root.tag == "Error":
         desc = root.find('Description')
         print(f"Eagle Core Error: {desc.text if desc is not None else 'Unknown'}")
         exit(1)
 
-    # 6. Generate the structured terminal table layout
-    print("\n" + "=" * 65)
-    print(f"{'METER METRIC VARIABLE':<35} | {'CALCULATED VALUE':<18} | {'UNITS':<10}")
-    print("=" * 65)
+    # --- Choice 1: Handle Device List ---
+    if args.command == "device_list":
+        print("\n" + "=" * 75)
+        print(f"{'HARDWARE ADDRESS':<20} | {'MODEL ID':<20} | {'STATUS':<15} | {'MANUFACTURER':<12}")
+        print("=" * 75)
+        for device in root.findall('.//Device'):
+            hw_addr = device.findtext('HardwareAddress', default='N/A')
+            model_id = device.findtext('ModelId', default='N/A')
+            status = device.findtext('ConnectionStatus', default='N/A')
+            mfg = device.findtext('Manufacturer', default='N/A')
+            print(f"{hw_addr:<20} | {model_id:<20} | {status:<15} | {mfg:<12}")
+        print("=" * 75 + "\n")
 
-    # Define the key operational metrics we want to monitor
-    target_metrics = {
-        'zigbee:InstantaneousDemand': 'InstantaneousDemand',
-        'zigbee:CurrentSummationDelivered': 'CurrentSummationDelivered',
-        'zigbee:CurrentSummationReceived': 'CurrentSummationReceived'
-    }
+    # --- Choice 2: Handle Device Details ---
+    elif args.command == "device_details":
+        print("\n" + "=" * 50)
+        print(f"{'AVAILABLE DEVICE VARIABLE NAMES'}")
+        print("=" * 50)
+        # Device details lists variables inside component profile frames as raw text strings
+        variables = root.findall('.//Variables/Variable')
+        if variables:
+            for variable in variables:
+                print(f"- {variable.text}")
+        else:
+            print("No variables exposed or device profile not discovered.")
+        print("=" * 50 + "\n")
 
-    # Extract and print variables directly from the XML payload
-    for variable in root.findall('.//Variable'):
-        name_node = variable.find('Name')
-        value_node = variable.find('Value')
-        units_node = variable.find('Units')
-        
-        if name_node is not None and name_node.text in target_metrics:
-            clean_name = target_metrics[name_node.text]
-            val_text = value_node.text if (value_node is not None and value_node.text) else "0.0"
-            unit_text = units_node.text if (units_node is not None and units_node.text) else ""
+    # --- Choice 3: Handle Device Query Matrix ---
+    elif args.command == "device_query":
+        print("\n" + "=" * 70)
+        print(f"{'METER METRIC VARIABLE':<35} | {'CALCULATED VALUE':<18} | {'UNITS':<10}")
+        print("=" * 70)
+
+        target_metrics = {
+            'zigbee:InstantaneousDemand': 'InstantaneousDemand',
+            'zigbee:CurrentSummationDelivered': 'CurrentSummationDelivered',
+            'zigbee:CurrentSummationReceived': 'CurrentSummationReceived'
+        }
+
+        for variable in root.findall('.//Variable'):
+            name_node = variable.find('Name')
+            value_node = variable.find('Value')
             
-            try:
-                # 1. First format the string with numeric comma separators
-                comma_separated_num = f"{float(val_text):,.3f}"
-            except ValueError:
-                comma_separated_num = val_text
+            if name_node is not None and name_node.text in target_metrics:
+                clean_name = target_metrics[name_node.text]
+                val_raw = value_node.text if (value_node is not None and value_node.text) else "0.0"
+                
+                # Split value from units (e.g., "21.499 kW" -> "21.499", "kW")
+                val_parts = val_raw.strip().split(maxsplit=1)
+                val_text = val_parts[0] if len(val_parts) > 0 else "0.0"
+                unit_text = val_parts[1] if len(val_parts) > 1 else ""
+                
+                try:
+                    comma_separated_num = f"{float(val_text):,.3f}"
+                except ValueError:
+                    comma_separated_num = val_text
 
-            # 2. Then apply the clean trailing layout whitespace padding separately
-            print(f"{clean_name:<35} | {comma_separated_num:<18} | {unit_text:<10}")
+                print(f"{clean_name:<35} | {comma_separated_num:<18} | {unit_text:<10}")
 
-    print("=" * 65 + "\n")
+        print("=" * 70 + "\n")
 
 except ET.ParseError as pe:
     print(f"XML Parsing Exception: {pe}")
