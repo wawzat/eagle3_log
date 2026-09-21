@@ -24,8 +24,8 @@ def build_xml_payload(command, hardware_address):
         device_details = ET.SubElement(command_node, "DeviceDetails")
         ET.SubElement(device_details, "HardwareAddress").text = hardware_address
 
+    # ONLY apply the Components block structure to device_query execution loops
     if command == "device_query":
-        # Using the <All>Y</All> shortcut to fetch all variables from the meter
         components = ET.SubElement(command_node, "Components")
         ET.SubElement(components, "All").text = "Y"
 
