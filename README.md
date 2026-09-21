@@ -25,6 +25,15 @@ One-shot query tool. Connects to the Eagle 3 device's local API, fetches current
 python eagle3.py
 ```
 
+### `eagle3_command.py`
+Command tool for sending supported commands to the Eagle 3 device's local API. The available commands are `device_list`, `device_query`, and `device_details`.
+
+```
+python ealge3_command.py device_list
+python ealge3_command.py device_query
+python ealge3_command.py device_details
+```
+
 ### `eagle3_log.py`
 Continuous logger. Runs an infinite loop that queries the Eagle 3 device every 60 seconds (anchored to a fixed interval) and appends the results to `eagle3_log.csv`. Creates the CSV with a header row if it doesn't already exist. Stop with `Ctrl+C`.
 
@@ -54,5 +63,6 @@ python analyze_power.py
 | File | Purpose |
 |---|---|
 | `config.ini` | Device credentials used by `eagle3.py` and `eagle3_log.py` |
+| `ealge3_command.py` | Sends supported commands to the Eagle 3 device's local API |
 | `eagle3_log.csv` | CSV data log produced by `eagle3_log.py` (generated at runtime) |
 | `requirements.txt` | Python package dependencies |
