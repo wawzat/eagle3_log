@@ -2,7 +2,7 @@
 import time
 import os
 
-LOG_FILE = "/home/admin/eagle3/eagle3_log.csv"
+LOG_FILE = "/home/admin/eagle3_log/eagle3_log.csv"
 
 if not os.path.isfile(LOG_FILE):
     print(f"Error: Target log file not found at {LOG_FILE}")
