@@ -25,8 +25,7 @@ def build_xml_payload(command, hardware_address):
         ET.SubElement(device_details, "HardwareAddress").text = hardware_address
 
     if command == "device_query":
-        # Using the <All>Y</All> shortcut block documented on page 13 
-        # to fetch all operational variables at once dynamically
+        # Using the <All>Y</All> shortcut to fetch all variables from the meter
         components = ET.SubElement(command_node, "Components")
         ET.SubElement(components, "All").text = "Y"
 
@@ -46,7 +45,7 @@ HARDWARE_ADDRESS = config.get('rainforest', 'HARDWARE_ADDRESS')
 # Silence SSL Warning notifications
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-url = "https://192.168.1.49/cgi-bin/post_manager"
+url = "https://192.168.1"
 
 headers = {
     "Content-Type": "application/xml"
@@ -78,23 +77,22 @@ try:
 
     # --- Choice 1: Handle Device List ---
     if args.command == "device_list":
-        print("\n" + "=" * 75)
-        print(f"{'HARDWARE ADDRESS':<20} | {'MODEL ID':<20} | {'STATUS':<15} | {'MANUFACTURER':<12}")
-        print("=" * 75)
+        print("\n" + "=" * 80)
+        print(f"{'HARDWARE ADDRESS':<20} | {'MODEL ID':<20} | {'STATUS':<15} | {'MANUFACTURER':<15}")
+        print("=" * 80)
         for device in root.findall('.//Device'):
             hw_addr = device.findtext('HardwareAddress', default='N/A')
             model_id = device.findtext('ModelId', default='N/A')
             status = device.findtext('ConnectionStatus', default='N/A')
             mfg = device.findtext('Manufacturer', default='N/A')
-            print(f"{hw_addr:<20} | {model_id:<20} | {status:<15} | {mfg:<12}")
-        print("=" * 75 + "\n")
+            print(f"{hw_addr:<20} | {model_id:<20} | {status:<15} | {mfg:<15}")
+        print("=" * 80 + "\n")
 
     # --- Choice 2: Handle Device Details ---
     elif args.command == "device_details":
         print("\n" + "=" * 50)
         print(f"{'AVAILABLE DEVICE VARIABLE NAMES'}")
         print("=" * 50)
-        # Device details lists variables inside component profile frames as raw text strings
         variables = root.findall('.//Variables/Variable')
         if variables:
             for variable in variables:
@@ -105,14 +103,29 @@ try:
 
     # --- Choice 3: Handle Device Query Matrix ---
     elif args.command == "device_query":
-        print("\n" + "=" * 70)
-        print(f"{'METER METRIC VARIABLE':<35} | {'CALCULATED VALUE':<18} | {'UNITS':<10}")
-        print("=" * 70)
+        print("\n" + "=" * 80)
+        print(f"{'METER METRIC VARIABLE':<42} | {'CALCULATED VALUE':<20} | {'UNITS':<10}")
+        print("=" * 80)
 
+        # Set of variables we want to filter and parse out from the response
         target_metrics = {
-            'zigbee:InstantaneousDemand': 'InstantaneousDemand',
-            'zigbee:CurrentSummationDelivered': 'CurrentSummationDelivered',
-            'zigbee:CurrentSummationReceived': 'CurrentSummationReceived'
+            "zigbee:InstantaneousDemand", "zigbee:DemandDigitsRight", "zigbee:DemandDigitsLeft",
+            "zigbee:DemandSuppressLeadingZero", "zigbee:Multiplier", "zigbee:Divisor",
+            "zigbee:CurrentSummationDelivered", "zigbee:CurrentSummationReceived", "zigbee:SummationDigitsRight",
+            "zigbee:SummationDigitsLeft", "zigbee:SummationSuppressLeadingZero", "zigbee:Price",
+            "zigbee:PriceTrailingDigits", "zigbee:PriceRateLabel", "zigbee:PriceCurrency",
+            "zigbee:PriceTier", "zigbee:PriceStartTime", "zigbee:PriceDuration",
+            "zigbee:Message", "zigbee:MessageId", "zigbee:MessageStartTime",
+            "zigbee:MessageDurationInMinutes", "zigbee:MessagePriority", "zigbee:MessageConfirmationRequired",
+            "zigbee:MessageConfirmed", "zigbee:BlockPeriodNumberOfBlocks", "zigbee:CurrentBlockPeriodConsumptionDelivered",
+            "zigbee:NoTierBlock1Price", "zigbee:NoTierBlock2Price", "zigbee:NoTierBlock3Price",
+            "zigbee:NoTierBlock4Price", "zigbee:NoTierBlock5Price", "zigbee:NoTierBlock6Price",
+            "zigbee:NoTierBlock7Price", "zigbee:NoTierBlock8Price", "zigbee:Block1Threshold",
+            "zigbee:Block2Threshold", "zigbee:Block3Threshold", "zigbee:Block4Threshold",
+            "zigbee:Block5Threshold", "zigbee:Block6Threshold", "zigbee:Block7Threshold",
+            "zigbee:Block8Threshold", "zigbee:StartOfBlockPeriod", "zigbee:BlockPeriodDuration",
+            "zigbee:ThresholdMultiplier", "zigbee:ThresholdDivisor", "zigbee:CurrentBillingPeriodStart",
+            "zigbee:CurrentBillingPeriodDuration"
         }
 
         for variable in root.findall('.//Variable'):
@@ -120,22 +133,25 @@ try:
             value_node = variable.find('Value')
             
             if name_node is not None and name_node.text in target_metrics:
-                clean_name = target_metrics[name_node.text]
-                val_raw = value_node.text if (value_node is not None and value_node.text) else "0.0"
+                # Dynamically strip the 'zigbee:' prefix for a clean terminal name
+                clean_name = name_node.text.split(':', 1)[1] if ':' in name_node.text else name_node.text
+                val_raw = value_node.text if (value_node is not None and value_node.text) else ""
                 
-                # Split value from units (e.g., "21.499 kW" -> "21.499", "kW")
+                # Split raw value from units trailing in the ASCII text field (e.g. "21.499 kW" or "0x0001")
                 val_parts = val_raw.strip().split(maxsplit=1)
                 val_text = val_parts[0] if len(val_parts) > 0 else "0.0"
                 unit_text = val_parts[1] if len(val_parts) > 1 else ""
                 
                 try:
+                    # Attempt to safely format numeric strings with comma grouping
                     comma_separated_num = f"{float(val_text):,.3f}"
                 except ValueError:
-                    comma_separated_num = val_text
+                    # Fall back to raw string output if it is an alphanumeric flag or a message text block
+                    comma_separated_num = val_raw
 
-                print(f"{clean_name:<35} | {comma_separated_num:<18} | {unit_text:<10}")
+                print(f"{clean_name:<42} | {comma_separated_num:<20} | {unit_text:<10}")
 
-        print("=" * 70 + "\n")
+        print("=" * 80 + "\n")
 
 except ET.ParseError as pe:
     print(f"XML Parsing Exception: {pe}")
