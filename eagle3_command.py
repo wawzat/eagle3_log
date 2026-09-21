@@ -45,7 +45,7 @@ HARDWARE_ADDRESS = config.get('rainforest', 'HARDWARE_ADDRESS')
 # Silence SSL Warning notifications
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-url = "https://192.168.1"
+url = "https://192.168.1.49/cgi-bin/post_manager"
 
 headers = {
     "Content-Type": "application/xml"
