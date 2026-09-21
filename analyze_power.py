@@ -14,22 +14,23 @@ df.columns = df.columns.str.strip()
 df['Timestamp'] = pd.to_datetime(df['Timestamp'])
 df = df.sort_values('Timestamp')
 
-# 2. Extract Hour components
-df['DateHour'] = df['Timestamp'].dt.strftime('%Y-%m-%d %H:00')
+# 2. Extract specific grouping targets
+df['DateHourKey'] = df['Timestamp'].dt.strftime('%Y-%m-%d %H:00')
 df['HourOfDay'] = df['Timestamp'].dt.hour
 
-# 3. Calculate True Hourly Consumption using the Odometer Delta Method
-hourly_boundaries = df.groupby('DateHour').agg(
+# 3. Step A: Find the net consumption within EACH unique calendar hour block
+hourly_chunks = df.groupby('DateHourKey').agg(
     Odometer_Start=('SummationDelivered_kWh', 'first'),
     Odometer_End=('SummationDelivered_kWh', 'last'),
     Avg_Demand_kW=('InstantaneousDemand_kW', 'mean'),
     Hour_Of_Day=('HourOfDay', 'first')
 ).reset_index()
 
-hourly_boundaries['Consumption_kWh'] = hourly_boundaries['Odometer_End'] - hourly_boundaries['Odometer_Start']
+# Calculate the actual kWh used purely inside that specific 60-minute window
+hourly_chunks['Consumption_kWh'] = hourly_chunks['Odometer_End'] - hourly_chunks['Odometer_Start']
 
-# 4. Aggregate across the whole dataset by "Hour of Day" (0-23)
-hourly_profile = hourly_boundaries.groupby('Hour_Of_Day').agg(
+# 4. Step B: Average those clean hourly units by raw hour (0-23) across all logged days
+hourly_profile = hourly_chunks.groupby('Hour_Of_Day').agg(
     Avg_Consumption_kWh=('Consumption_kWh', 'mean'),
     Avg_Demand_kW=('Avg_Demand_kW', 'mean')
 ).reset_index()
@@ -41,7 +42,6 @@ print("\n" + "=" * 75)
 print("TYPICAL HOURLY NET CONSUMPTION PROFILE (kWh)")
 print("=" * 75)
 
-# Find the maximum value to scale our bars to fit a standard terminal nicely
 max_val = hourly_profile['Avg_Consumption_kWh'].max()
 scale_factor = 40 / max_val if max_val > 0 else 1
 
@@ -49,20 +49,19 @@ for _, row in hourly_profile.iterrows():
     h_lbl = f"{int(row['Hour_Of_Day']):02d}:00"
     val = row['Avg_Consumption_kWh']
     
-    # Generate a horizontal bar using block characters
     bar_length = int(val * scale_factor)
     bar_str = "█" * bar_length
     
     print(f"{h_lbl:<6} | {bar_str:<40} {val:.3f} kWh")
 
-# --- FIXED: Calculated and inserted Total Daily Consumption Metrics ---
+# Calculate Total Daily Footprint by summing your typical hourly baselines
 total_daily_kwh = hourly_profile['Avg_Consumption_kWh'].sum()
 
 print("\n" + "=" * 65)
 print(f"TOTAL ESTIMATED DAILY CONSUMPTION: {total_daily_kwh:,.3f} kWh")
 print("=" * 65)
 
-# 6. Generate the Structured CLI Data Table directly below
+# 6. Generate the Structured CLI Data Table
 print("\n" + "=" * 65)
 print(f"{'HOUR OF DAY':<15} | {'AVG CONSUMPTION (kWh)':<22} | {'AVG DEMAND (kW)':<15}")
 print("=" * 65)
