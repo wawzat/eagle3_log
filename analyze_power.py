@@ -79,7 +79,10 @@ print("\n" + "=" * 95)
 print(f"{'DATE':<12} | {'HOUR OF DAY':<12} | {'CONSUMPTION (kWh)':<22} | {'DEMAND (kW)':<15}")
 print("=" * 95)
 
-for _, row in hourly_chunks.sort_values(['Date', 'Hour_Of_Day']).iterrows():
+current_date = pd.Timestamp.now().strftime('%Y-%m-%d')
+current_day_chunks = hourly_chunks[hourly_chunks['Date'] == current_date]
+
+for _, row in current_day_chunks.sort_values('Hour_Of_Day').iterrows():
     h_lbl = f"{int(row['Hour_Of_Day']):02d}:00"
     print(f"{row['Date']:<12} | {h_lbl:<12} | {row['Consumption_kWh']:<22,.3f} | {row['Avg_Demand_kW']:<15,.3f}")
 
