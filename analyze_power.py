@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
-import pandas as pd
 import os
+import sys
+
+import pandas as pd
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 CSV_FILE = "eagle3_log.csv"
 
@@ -19,10 +27,12 @@ df = df[df['SummationDelivered_kWh'] > 0.0]
 
 # 2. Extract specific grouping targets
 df['DateHourKey'] = df['Timestamp'].dt.strftime('%Y-%m-%d %H:00')
+df['Date'] = df['Timestamp'].dt.strftime('%Y-%m-%d')
 df['HourOfDay'] = df['Timestamp'].dt.hour
 
 # 3. Step A: Find the net consumption within EACH unique calendar hour block
 hourly_chunks = df.groupby('DateHourKey').agg(
+    Date=('Date', 'first'),
     Odometer_Start=('SummationDelivered_kWh', 'first'),
     Odometer_End=('SummationDelivered_kWh', 'last'),
     Avg_Demand_kW=('InstantaneousDemand_kW', 'mean'),
@@ -65,12 +75,12 @@ print(f"TOTAL ESTIMATED DAILY CONSUMPTION: {total_daily_kwh:,.3f} kWh")
 print("=" * 65)
 
 # 6. Generate the Structured CLI Data Table
-print("\n" + "=" * 65)
-print(f"{'HOUR OF DAY':<15} | {'AVG CONSUMPTION (kWh)':<22} | {'AVG DEMAND (kW)':<15}")
-print("=" * 65)
+print("\n" + "=" * 95)
+print(f"{'DATE':<12} | {'HOUR OF DAY':<12} | {'CONSUMPTION (kWh)':<22} | {'DEMAND (kW)':<15}")
+print("=" * 95)
 
-for _, row in hourly_profile.iterrows():
+for _, row in hourly_chunks.sort_values(['Date', 'Hour_Of_Day']).iterrows():
     h_lbl = f"{int(row['Hour_Of_Day']):02d}:00"
-    print(f"{h_lbl:<15} | {row['Avg_Consumption_kWh']:<22,.3f} | {row['Avg_Demand_kW']:<15,.3f}")
+    print(f"{row['Date']:<12} | {h_lbl:<12} | {row['Consumption_kWh']:<22,.3f} | {row['Avg_Demand_kW']:<15,.3f}")
 
-print("=" * 65 + "\n")
+print("=" * 95 + "\n")
