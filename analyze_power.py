@@ -11,6 +11,7 @@ if hasattr(sys.stdout, 'reconfigure'):
         pass
 
 CSV_FILE = "eagle3_log.csv"
+PACIFIC_TIMEZONE = "America/Los_Angeles"
 
 if not os.path.isfile(CSV_FILE):
     print(f"Error: {CSV_FILE} not found. Ensure the file is present in the working directory.")
@@ -19,7 +20,7 @@ if not os.path.isfile(CSV_FILE):
 # 1. Load and clean the CSV dataset
 df = pd.read_csv(CSV_FILE)
 df.columns = df.columns.str.strip()
-df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+df['Timestamp'] = pd.to_datetime(df['Timestamp'], utc=True).dt.tz_convert(PACIFIC_TIMEZONE)
 df = df.sort_values('Timestamp')
 
 # Filter out any faulty 0.0 odometer rows before calculating math boundaries
@@ -52,7 +53,7 @@ hourly_profile = hourly_profile.sort_values('Hour_Of_Day')
 
 # 5. Render a Pure Text Bar Chart for Avg Consumption (kWh)
 print("\n" + "=" * 75)
-print("TYPICAL HOURLY NET CONSUMPTION PROFILE (kWh)")
+print("TYPICAL HOURLY NET CONSUMPTION PROFILE (Pacific Time, kWh)")
 print("=" * 75)
 
 max_val = hourly_profile['Avg_Consumption_kWh'].max()
@@ -76,10 +77,10 @@ print("=" * 65)
 
 # 6. Generate the Structured CLI Data Table
 print("\n" + "=" * 95)
-print(f"{'DATE':<12} | {'HOUR OF DAY':<12} | {'CONSUMPTION (kWh)':<22} | {'DEMAND (kW)':<15}")
+print(f"{'DATE (PT)':<12} | {'HOUR OF DAY (PT)':<17} | {'CONSUMPTION (kWh)':<22} | {'DEMAND (kW)':<15}")
 print("=" * 95)
 
-current_date = pd.Timestamp.now().strftime('%Y-%m-%d')
+current_date = pd.Timestamp.now(tz=PACIFIC_TIMEZONE).strftime('%Y-%m-%d')
 current_day_chunks = hourly_chunks[hourly_chunks['Date'] == current_date]
 
 for _, row in current_day_chunks.sort_values('Hour_Of_Day').iterrows():
