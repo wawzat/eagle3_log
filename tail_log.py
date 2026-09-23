@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import time
 import os
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+PACIFIC = ZoneInfo("America/Los_Angeles")
 
 LOG_FILE = "/home/admin/eagle3_log/eagle3_log.csv"
 
@@ -14,7 +18,12 @@ def print_row(line_str):
     if not parts or "Timestamp" in parts or len(parts) < 3:
         return False
     try:
-        timestamp = parts[0]
+        timestamp = (
+            datetime.fromisoformat(parts[0].replace("Z", "+00:00"))
+            .replace(tzinfo=ZoneInfo("UTC"))
+            .astimezone(PACIFIC)
+            .strftime("%Y-%m-%d %H:%M:%S %Z")
+        )
         demand = float(parts[1])
         summation = float(parts[2])
         
