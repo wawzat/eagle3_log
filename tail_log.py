@@ -35,10 +35,11 @@ def parse_row(line_str):
 
 
 def print_current_row(record, daily_consumed, overwrite=False):
-    """Print the latest row and replace the previous daily total when needed."""
+    """Print the latest row as a new persistent line, replacing only the previous daily total line."""
     timestamp, demand, summation = record
     if overwrite:
-        print("\033[2A", end="")
+        # Move up to the previous daily total line so the new log row takes its place.
+        print("\033[1A", end="")
 
     timestamp_text = timestamp.strftime("%Y-%m-%d %H:%M:%S %Z")
     row = (
