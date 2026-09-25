@@ -2,3 +2,4 @@ config.ini
 __pycache__/ealge3_command.cpython-313.pyc
 eagle3_log.csv
 eagle3_log.xlsx
+__pycache__/tail_log.cpython-313.pyc
