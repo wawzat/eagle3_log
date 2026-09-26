@@ -55,8 +55,8 @@ print("\n" + "=" * 62)
 print(f"{'TIMESTAMP':<28} | {'DEMAND':<12} | {'SUMMATION DELIVERED':<22}")
 print("=" * 62)
 
-# First Pass: Find the latest row and its current Pacific day's range.
-last_record = None
+# First Pass: Find the current Pacific day's rows and range.
+current_day_records = []
 daily_date = None
 daily_min = None
 daily_max = None
@@ -67,21 +67,22 @@ with open(LOG_FILE, "r") as f:
             continue
 
         timestamp, _, summation = record
-        if daily_date != timestamp.date():
+        if timestamp.date() != daily_date:
             daily_date = timestamp.date()
             daily_min = summation
             daily_max = summation
+            current_day_records = [record]
         else:
             daily_min = min(daily_min, summation)
             daily_max = max(daily_max, summation)
+            current_day_records.append(record)
 
-        last_record = record
-
-if last_record is not None:
-    print_current_row(last_record, daily_max - daily_min)
-    has_rendered = True
-else:
-    has_rendered = False
+has_rendered = False
+if current_day_records:
+    daily_consumed = daily_max - daily_min
+    for record in current_day_records:
+        print_current_row(record, daily_consumed, overwrite=has_rendered)
+        has_rendered = True
 
 # Second Pass: Jump to the end and watch for live appends
 with open(LOG_FILE, "r") as f:
