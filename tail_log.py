@@ -50,6 +50,17 @@ def print_current_row(record, daily_consumed, overwrite=False):
     print(f"\033[2K{row}")
     print(f"\033[2KDAILY POWER CONSUMED: {daily_consumed:,.3f} kWh", flush=True)
 
+
+def update_daily_consumed(summation, last_valid_summation, daily_consumed):
+    if summation <= 0:
+        return last_valid_summation, daily_consumed
+
+    if last_valid_summation is not None and summation > last_valid_summation:
+        daily_consumed += summation - last_valid_summation
+
+    return summation, daily_consumed
+
+
 print("Attaching to live data stream... (Press Ctrl+C to exit)")
 print("\n" + "=" * 62)
 print(f"{'TIMESTAMP':<28} | {'DEMAND':<12} | {'SUMMATION DELIVERED':<22}")
@@ -58,8 +69,8 @@ print("=" * 62)
 # First Pass: Find the current Pacific day's rows and range.
 current_day_records = []
 daily_date = None
-daily_min = None
-daily_max = None
+daily_consumed = 0.0
+last_valid_summation = None
 with open(LOG_FILE, "r") as f:
     for line in f:
         record = parse_row(line)
@@ -69,17 +80,19 @@ with open(LOG_FILE, "r") as f:
         timestamp, _, summation = record
         if timestamp.date() != daily_date:
             daily_date = timestamp.date()
-            daily_min = summation
-            daily_max = summation
+            daily_consumed = 0.0
+            last_valid_summation = None
             current_day_records = [record]
         else:
-            daily_min = min(daily_min, summation)
-            daily_max = max(daily_max, summation)
             current_day_records.append(record)
+        last_valid_summation, daily_consumed = update_daily_consumed(
+            summation,
+            last_valid_summation,
+            daily_consumed,
+        )
 
 has_rendered = False
 if current_day_records:
-    daily_consumed = daily_max - daily_min
     for record in current_day_records:
         print_current_row(record, daily_consumed, overwrite=has_rendered)
         has_rendered = True
@@ -102,15 +115,18 @@ with open(LOG_FILE, "r") as f:
             timestamp, _, summation = record
             if timestamp.date() != daily_date:
                 daily_date = timestamp.date()
-                daily_min = summation
-                daily_max = summation
-            else:
-                daily_min = min(daily_min, summation)
-                daily_max = max(daily_max, summation)
+                daily_consumed = 0.0
+                last_valid_summation = None
+
+            last_valid_summation, daily_consumed = update_daily_consumed(
+                summation,
+                last_valid_summation,
+                daily_consumed,
+            )
 
             print_current_row(
                 record,
-                daily_max - daily_min,
+                daily_consumed,
                 overwrite=has_rendered,
             )
             has_rendered = True
