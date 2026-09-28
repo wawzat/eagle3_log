@@ -58,6 +58,13 @@ Offline analysis tool. Reads `eagle3_log.csv`, computes true hourly energy consu
 python analyze_power.py
 ```
 
+### `daily_power.py`
+Offline analysis tool. Reads `eagle3_log.csv`, excludes zero cumulative meter readings, calculates daily consumption as the maximum minus minimum `SummationDelivered_kWh` reading for each Pacific calendar date, and prints the results as a text bar chart.
+
+```
+python weekly_power.py
+```
+
 ## Files
 
 | File | Purpose |
