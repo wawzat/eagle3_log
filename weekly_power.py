@@ -5,7 +5,7 @@ import pandas as pd
 
 CSV_FILE = "eagle3_log.csv"
 PACIFIC_TIMEZONE = "America/Los_Angeles"
-TARGET_DAYS = ["Sunday", "Monday"]
+TARGET_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
 if not os.path.isfile(CSV_FILE):
     print(f"Error: {CSV_FILE} not found. Ensure the file is present in the working directory.")
@@ -27,13 +27,13 @@ weekly_power = daily_power[daily_power["Day"].isin(TARGET_DAYS)].groupby("Day").
 ).reindex(TARGET_DAYS)
 
 if weekly_power["Avg_Daily_Power_kW"].isna().all():
-    print("No Sunday or Monday readings found in the log.")
+    print("No daily power readings found in the log.")
     raise SystemExit(0)
 
 max_value = weekly_power["Avg_Daily_Power_kW"].max()
 scale_factor = 40 / max_value if max_value > 0 else 1
 
-print("\nAVERAGE DAILY POWER (Pacific Time, Sunday-Monday)")
+print("\nAVERAGE DAILY POWER BY DAY OF WEEK (Pacific Time)")
 print("=" * 65)
 
 for day, row in weekly_power.iterrows():
