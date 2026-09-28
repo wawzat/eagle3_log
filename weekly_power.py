@@ -39,4 +39,5 @@ print("=" * 65)
 for _, row in daily_consumption.iterrows():
     value = row["Consumption_kWh"]
     bar = "#" * int(value * scale_factor)
-    print(f"{row['Date']} | {bar:<40} {value:.3f} kWh")
+    day_of_week = row["Date"].strftime("%A")
+    print(f"{day_of_week:<10} {row['Date']} | {bar:<40} {value:.3f} kWh")
