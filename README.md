@@ -59,7 +59,7 @@ python analyze_power.py
 ```
 
 ### `daily_power.py`
-Offline analysis tool. Reads `eagle3_log.csv`, excludes zero cumulative meter readings, calculates daily consumption as the maximum minus minimum `SummationDelivered_kWh` reading for each Pacific calendar date, and prints the consumption plus the minimum, average, and maximum meter readings as a text bar chart.
+Offline analysis tool. Reads `eagle3_log.csv`, excludes zero cumulative meter readings, calculates daily consumption as the maximum minus minimum `SummationDelivered_kWh` reading for each Pacific calendar date, and prints the consumption plus the minimum, average, and maximum `InstantaneousDemand_kW` readings as a text bar chart.
 
 ```
 python weekly_power.py
