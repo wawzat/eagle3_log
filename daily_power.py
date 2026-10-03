@@ -20,6 +20,7 @@ df = df[df["SummationDelivered_kWh"] > 0]
 df["Date"] = df["Timestamp"].dt.date
 daily_consumption = df.groupby("Date")["SummationDelivered_kWh"].agg(
     Minimum="min",
+    Average="mean",
     Maximum="max",
 ).reset_index()
 daily_consumption["Consumption_kWh"] = (
@@ -34,10 +35,14 @@ max_value = daily_consumption["Consumption_kWh"].max()
 scale_factor = 40 / max_value if max_value > 0 else 1
 
 print("\nACTUAL DAILY CONSUMPTION (Pacific Time)")
-print("=" * 65)
+print("=" * 120)
 
 for _, row in daily_consumption.iterrows():
     value = row["Consumption_kWh"]
     bar = "#" * int(value * scale_factor)
     day_of_week = row["Date"].strftime("%A")
-    print(f"{day_of_week:<10} {row['Date']} | {bar:<40} {value:.3f} kWh")
+    print(
+        f"{day_of_week:<10} {row['Date']} | {bar:<40} "
+        f"{value:.3f} kWh consumed | Meter min/avg/max: "
+        f"{row['Minimum']:.3f}/{row['Average']:.3f}/{row['Maximum']:.3f} kWh"
+    )
