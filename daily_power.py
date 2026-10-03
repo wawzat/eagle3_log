@@ -17,6 +17,7 @@ df["SummationDelivered_kWh"] = pd.to_numeric(df["SummationDelivered_kWh"], error
 df["InstantaneousDemand_kW"] = pd.to_numeric(df["InstantaneousDemand_kW"], errors="coerce")
 
 demand_df = df.dropna(subset=["Timestamp", "InstantaneousDemand_kW"]).copy()
+demand_df = demand_df[demand_df["InstantaneousDemand_kW"] != 0]
 demand_df["Date"] = demand_df["Timestamp"].dt.date
 daily_demand = demand_df.groupby("Date")["InstantaneousDemand_kW"].agg(
     Minimum="min",
